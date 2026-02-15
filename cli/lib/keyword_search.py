@@ -1,4 +1,5 @@
 from .search_utils import load_movies, DEFAULT_SEARCH_LIMIT
+import string
 
 def search_movies(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     movies: list[dict] = load_movies()
@@ -15,6 +16,7 @@ def search_movies(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
 
 def preprocess_text(text: str) -> str:
     text = text.lower()
+    text = text.translate(str.maketrans("", "", string.punctuation))
     return text
 
 def main():
