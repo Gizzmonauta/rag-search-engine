@@ -1,4 +1,4 @@
-from .search_utils import load_movies, DEFAULT_SEARCH_LIMIT
+from .search_utils import load_movies, DEFAULT_SEARCH_LIMIT, load_stopwords
 import string
 
 def search_movies(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
@@ -15,20 +15,27 @@ def search_movies(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     return results
 
 def preprocess_text(text: str) -> str:
-    text = text.lower()
+    text: str = text.lower()
     text = text.translate(str.maketrans("", "", string.punctuation))
     return text
 
 def tokenize_text(text: str) -> list[str]:
-    text = preprocess_text(text)
-    tokens = text.split()
-    valid_tokens = []
+    text: str= preprocess_text(text)
+    tokens: list[str] = text.split()
+    valid_tokens: list[str] = []
     for token in tokens:
         if token:
             valid_tokens.append(token)
-    return valid_tokens
+    
+    stop_words: list[str] = load_stopwords()
+    filtered_words: list[str] = []
+    for token in valid_tokens:
+        if token not in stop_words:
+            filtered_words.append(token)
 
-def has_matching_token(query_tokens, title_tokens) -> bool:
+    return filtered_words
+
+def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool:
     for qt in query_tokens:
         for tt in title_tokens: 
             if qt in tt:
@@ -37,7 +44,7 @@ def has_matching_token(query_tokens, title_tokens) -> bool:
 
 def main():
     query = input("Enter your search query: ")
-    search_movies(query)
+    results = search_movies(query)
 
 
 if __name__ == "__main__":
