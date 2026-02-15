@@ -48,19 +48,32 @@ class InvertedIndex:
         with open(self.docmap_path, "wb") as f:
             pickle.dump(self.docmap, f)
 
+    def load(self) -> None:
+        with open(self.index_path, "rb") as f:
+            self.index = pickle.load(f)
+        with open(self.docmap_path, "rb") as f:
+            self.docmap = pickle.load(f)
+
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
-    movies: list[dict] = load_movies()
+    index: InvertedIndex = InvertedIndex()
+    try:
+        index.load()
+    except FileNotFoundError:
+        print("Inverted index not found. Please run 'build' command first.")
+        return []
+    seen_docs: set[int] = set()
     results: list[dict] = []
-    for movie in movies:
-        tokenized_query = tokenize_text(query)
-        tokenized_title = tokenize_text(movie["title"])
-        if has_matching_token(tokenized_query, tokenized_title):
-            results.append(movie)
-            if len(results) >= limit:
-                break
-
+    tokenized_query = tokenize_text(query)
+    for token in tokenized_query:
+        if token in index.index:
+            for doc_id in index.get_documents(token):
+                if doc_id not in seen_docs:
+                    seen_docs.add(doc_id)
+                    results.append(index.docmap[doc_id])
+                if len(results) >= limit:
+                    break
     return results
-
+    
 def preprocess_text(text: str) -> str:
     text: str = text.lower()
     text = text.translate(str.maketrans("", "", string.punctuation))
