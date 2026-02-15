@@ -1,14 +1,23 @@
-from .search_utils import load_movies, DEFAULT_SEARCH_LIMIT, load_stopwords, PROJECT_ROOT
-import string
 import os
 import pickle
-from nltk.stem import PorterStemmer
+import string
 from collections import defaultdict
+
+from nltk.stem import PorterStemmer
+
+from .search_utils import (
+    CACHE_DIR,
+    DEFAULT_SEARCH_LIMIT, 
+    load_movies, 
+    load_stopwords
+    )
 
 class InvertedIndex:
     def __init__(self):
         self.index: dict[str, set[int]] = defaultdict(set)
         self.docmap: dict[int, dict] = {}
+        self.index_path = os.path.join(CACHE_DIR, "index.pkl")
+        self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
 
     def __add_document(self, doc_id: int, text: str) -> None:
         tokens = tokenize_text(text)
@@ -33,15 +42,13 @@ class InvertedIndex:
             self.__add_document(movie["id"], f"{movie['title']} {movie['description']}")
 
     def save(self) -> None:
-        os.makedirs(os.path.join(PROJECT_ROOT, "cache"), exist_ok=True)
-        cache_path_index = os.path.join(PROJECT_ROOT, "cache", "index.pkl")
-        with open(cache_path_index, "wb") as f:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(self.index_path, "wb") as f:
             pickle.dump(self.index, f)
-        cache_path_docmap = os.path.join(PROJECT_ROOT, "cache", "docmap.pkl")
-        with open(cache_path_docmap, "wb") as f:
+        with open(self.docmap_path, "wb") as f:
             pickle.dump(self.docmap, f)
 
-def search_movies(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     movies: list[dict] = load_movies()
     results: list[dict] = []
     for movie in movies:
@@ -87,9 +94,16 @@ def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool
                 return True
     return False
 
+def build_command() -> None:
+    index: InvertedIndex = InvertedIndex()
+    index.build()
+    index.save()
+    docs: list[int] = index.get_documents("merida")
+    print(f"First document for token 'merida' = {docs[0]}")
+
+
 def main():
-    query = input("Enter your search query: ")
-    results = search_movies(query)
+    pass
 
 
 if __name__ == "__main__":
