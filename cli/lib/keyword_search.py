@@ -1,7 +1,7 @@
 import os
 import pickle
 import string
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from nltk.stem import PorterStemmer
 
@@ -16,13 +16,24 @@ class InvertedIndex:
     def __init__(self):
         self.index: dict[str, set[int]] = defaultdict(set)
         self.docmap: dict[int, dict] = {}
+        self.term_frequencies: dict[int, Counter] = defaultdict(Counter)
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
+        self.term_frequencies_path = os.path.join(CACHE_DIR, "term_frequencies.pkl")
+
 
     def __add_document(self, doc_id: int, text: str) -> None:
         tokens = tokenize_text(text)
         for token in tokens:
             self.index[token].add(doc_id)
+        self.term_frequencies[doc_id].update(tokens)
+
+    def get_tf(self, doc_id: int, term: str) -> int:
+        tokens = tokenize_text(term)
+        if len(tokens) != 1:
+            raise ValueError("Term must be a single token.")
+        token = tokens[0]
+        return self.term_frequencies[doc_id][token]
 
     def get_documents(self, term: str) -> list[int]:
         doc_ids: set[int] = set()
@@ -47,12 +58,24 @@ class InvertedIndex:
             pickle.dump(self.index, f)
         with open(self.docmap_path, "wb") as f:
             pickle.dump(self.docmap, f)
+        with open(self.term_frequencies_path, "wb") as f:
+            pickle.dump(self.term_frequencies, f)
 
     def load(self) -> None:
         with open(self.index_path, "rb") as f:
             self.index = pickle.load(f)
         with open(self.docmap_path, "rb") as f:
             self.docmap = pickle.load(f)
+        with open(self.term_frequencies_path, "rb") as f:
+            self.term_frequencies = pickle.load(f)
+
+def tf_command(doc_id: int, term: str) -> int:
+    index: InvertedIndex = InvertedIndex()
+    try:
+        index.load()
+    except FileNotFoundError:
+        return 0
+    return index.get_tf(doc_id, term)
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     index: InvertedIndex = InvertedIndex()
@@ -111,8 +134,6 @@ def build_command() -> None:
     index: InvertedIndex = InvertedIndex()
     index.build()
     index.save()
-    docs: list[int] = index.get_documents("merida")
-    print(f"First document for token 'merida' = {docs[0]}")
 
 
 def main():
